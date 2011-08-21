@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metaModel>
+	<name>Diffusion model</name>
+	<classes>
+		<class>
+			<name>Cell</name>
+			<items>
+				<finiteStock>
+					<name>Value</name>
+					<initialValue>
+						<m:math xmlns:m="http://www.w3.org/1998/Math/MathML">
+							<m:ci>InitialValue</m:ci>
+						</m:math>
+					</initialValue>
+				</finiteStock>
+				<rate>
+					<name>diffusion-west</name>
+					<expression>
+						<m:math xmlns:m="http://www.w3.org/1998/Math/MathML">
+							<m:ci>diffusionTax-west</m:ci>
+						</m:math>
+					</expression>
+					<source>Value</source>
+				</rate>
+				<rate>
+					<name>diffusion-east</name>
+					<expression>
+						<m:math xmlns:m="http://www.w3.org/1998/Math/MathML">
+							<m:ci>diffusionTax-east</m:ci>
+						</m:math>
+					</expression>
+					<source>Value</source>
+				</rate>
+				<rate>
+					<name>diffusion-north</name>
+					<expression>
+						<m:math xmlns:m="http://www.w3.org/1998/Math/MathML">
+							<m:ci>diffusionTax-north</m:ci>
+						</m:math>
+					</expression>
+					<source>Value</source>
+				</rate>
+				<rate>
+					<name>diffusion-south</name>
+					<expression>
+						<m:math xmlns:m="http://www.w3.org/1998/Math/MathML">
+							<m:ci>diffusionTax-south</m:ci>
+						</m:math>
+					</expression>
+					<source>Value</source>
+				</rate>
+				<property>
+					<name>InitialValue</name>
+					<value>100.0</value>
+				</property>
+				<auxiliary>
+					<name>diffusionTax-west</name>
+					<expression>
+						<m:math xmlns:m="http://www.w3.org/1998/Math/MathML">
+                     <m:apply>
+                        <m:times/>
+                        <m:cn>0.05</m:cn>
+                        <m:apply>
+                           <m:minus />
+                           <m:ci>Value</m:ci>
+                           <m:ci>west.Value</m:ci>
+                        </m:apply>
+                     </m:apply>
+						</m:math>
+					</expression>
+				</auxiliary>
+
+				<auxiliary>
+					<name>diffusionTax-east</name>
+					<expression>
+						<m:math xmlns:m="http://www.w3.org/1998/Math/MathML">
+                     <m:apply>
+                        <m:times />
+                        <m:cn>0.05</m:cn>
+                        <m:apply>
+                           <m:minus />
+                           <m:ci>Value</m:ci>
+                           <m:ci>east.Value</m:ci>
+                        </m:apply>
+                     </m:apply>
+						</m:math>
+					</expression>
+				</auxiliary>
+				<auxiliary>
+					<name>diffusionTax-north</name>
+					<expression>
+						<m:math xmlns:m="http://www.w3.org/1998/Math/MathML">
+                     <m:apply>
+                        <m:times/>
+                        <m:cn>0.05</m:cn>
+                        <m:apply>
+                           <m:minus />
+                           <m:ci>Value</m:ci>
+                           <m:ci>north.Value</m:ci>
+                        </m:apply>
+                     </m:apply>
+						</m:math>
+					</expression>
+				</auxiliary>
+
+				<auxiliary>
+					<name>diffusionTax-south</name>
+					<expression>
+						<m:math xmlns:m="http://www.w3.org/1998/Math/MathML">
+                     <m:apply>
+                        <m:times />
+                        <m:cn>0.05</m:cn>
+                        <m:apply>
+                           <m:minus />
+                           <m:ci>Value</m:ci>
+                           <m:ci>south.Value</m:ci>
+                        </m:apply>
+                     </m:apply>
+						</m:math>
+					</expression>
+				</auxiliary>
+			</items>
+		</class>
+   </classes>
+	<relations>
+		<singleRelation>
+			<name>west</name>
+			<source>Cell</source>
+			<target>Cell</target>
+		</singleRelation>
+		<singleRelation>
+			<name>east</name>
+			<source>Cell</source>
+			<target>Cell</target>
+		</singleRelation>
+		<singleRelation>
+			<name>north</name>
+			<source>Cell</source>
+			<target>Cell</target>
+		</singleRelation>
+		<singleRelation>
+			<name>south</name>
+			<source>Cell</source>
+			<target>Cell</target>
+		</singleRelation>
+	</relations>
+</metaModel>
+
+
