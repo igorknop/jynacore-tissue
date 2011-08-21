@@ -14,6 +14,7 @@ import br.ufjf.mmc.jynacore.impl.DefaultSimulationData;
 import br.ufjf.mmc.jynacore.impl.DefaultSimulationProfile;
 import br.ufjf.mmc.jynacore.metamodel.MetaModel;
 import br.ufjf.mmc.jynacore.metamodel.MetaModelStorer;
+import br.ufjf.mmc.jynacore.metamodel.exceptions.instance.MetaModelInstanceInvalidLinkException;
 import br.ufjf.mmc.jynacore.metamodel.impl.JDOMMetaModelStorer;
 import br.ufjf.mmc.jynacore.metamodel.instance.ClassInstance;
 import br.ufjf.mmc.jynacore.metamodel.instance.MetaModelInstance;
@@ -21,8 +22,6 @@ import br.ufjf.mmc.jynacore.metamodel.instance.impl.DefaultMetaModelInstance;
 import br.ufjf.mmc.jynacore.metamodel.simulator.impl.DefaultMetaModelInstanceEulerMethod;
 import br.ufjf.mmc.jynacore.metamodel.simulator.impl.DefaultMetaModelInstanceSimulation;
 import java.io.File;
-import java.util.Collection;
-import java.util.Map.Entry;
 
 /**
  *
@@ -53,47 +52,23 @@ public class JynacoreTissue {
     //data.removeAll();
     data.clearAll();
 
-    instance.setName("Tissue");
-    MetaModelInstance mmi = (MetaModelInstance) instance;
     int rows = 32;
     int cols = 32;
-    System.out.println("Creating "+(rows*cols)+"instances...");
-    for (int i = 0; i < rows; i++) {
-      for (int j = 0; j < cols; j++) {
-        ClassInstance ci = mmi.addNewClassInstance("cell[" + i + "," + j + "]", "Cell");
-        ci.setProperty("InitialValue", (i == 0 && j == 0) ? 100.0 : 0.0);
-        data.add("cell[" + i + "," + j + "]", (JynaValued) ci.get("Value"));
-      }
-    }
-    System.out.println("Creating meshes...");
-    for (int i = 0; i < rows; i++) {
-      for (int j = 0; j < cols; j++) {
-        ClassInstance eci = mmi.getClassInstances().get("cell[" + i + "," + j + "]");
-        eci.setLink("east", "cell[" + i + "," + ((j == cols-1) ? j : j + 1) + "]");
-        eci.setLink("west", "cell[" + i + "," + ((j == 0) ? j : j - 1) + "]");
-        eci.setLink("north", "cell[" + ((i == 0) ? i : i - 1) + "," + j + "]");
-        eci.setLink("south", "cell[" + ((i == rows-1) ? i : i + 1) + "," + j + "]");
-      }
-    }
+    MetaModelInstance mmi = createCells(instance, rows, cols, data);
+    connectCells(rows, cols, mmi);
 
     simulation.setModel(instance);
-
     simulation.setSimulationData(
             (JynaSimulationData) data);
-//    Collection<JynaValued> valueds = instance.getAllJynaValued();
-//
-//    for (JynaValued jv : valueds) {
-//      if (jv.getName().equals("Value")) {
-//        data.add(jv);
-//      }
-//    }
-    // data.addAll(model.getAllJynaValued());
-
     simulation.reset();
+    data.register(0.0);
+    runSimulation(simulation, skip);
 
-    data.register(
-            0.0);
+    System.out.println(data.getWatchedNames());
+    System.out.println(data);
+  }
 
+  private static void runSimulation(JynaSimulation simulation, int skip) throws Exception {
     //simulation.run();
     int steps = simulation.getProfile().getTimeSteps();
 
@@ -107,8 +82,32 @@ public class JynacoreTissue {
       }
     }
     System.out.println("Simulating done!");
+  }
 
-    System.out.println(data.getWatchedNames());
-    System.out.println(data);
+  private static void connectCells(int rows, int cols, MetaModelInstance mmi) throws MetaModelInstanceInvalidLinkException {
+    System.out.println("Creating meshes...");
+    for (int i = 0; i < rows; i++) {
+      for (int j = 0; j < cols; j++) {
+        ClassInstance eci = mmi.getClassInstances().get("cell[" + i + "," + j + "]");
+        eci.setLink("east", "cell[" + i + "," + ((j == cols-1) ? j : j + 1) + "]");
+        eci.setLink("west", "cell[" + i + "," + ((j == 0) ? j : j - 1) + "]");
+        eci.setLink("north", "cell[" + ((i == 0) ? i : i - 1) + "," + j + "]");
+        eci.setLink("south", "cell[" + ((i == rows-1) ? i : i + 1) + "," + j + "]");
+      }
+    }
+  }
+
+  private static MetaModelInstance createCells(JynaSimulableModel instance, int rows, int cols, DefaultSimulationData data) throws Exception {
+    instance.setName("Tissue");
+    MetaModelInstance mmi = (MetaModelInstance) instance;
+    System.out.println("Creating "+(rows*cols)+"instances...");
+    for (int i = 0; i < rows; i++) {
+      for (int j = 0; j < cols; j++) {
+        ClassInstance ci = mmi.addNewClassInstance("cell[" + i + "," + j + "]", "Cell");
+        ci.setProperty("InitialValue", (i == 0 && j == 0) ? 100.0 : 0.0);
+        data.add("cell[" + i + "," + j + "]", (JynaValued) ci.get("Value"));
+      }
+    }
+    return mmi;
   }
 }
