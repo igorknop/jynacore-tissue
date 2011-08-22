@@ -32,6 +32,7 @@ import mpi.*;
  */
 public class JynacoreTissueMPJ {
 
+   public static final int TIME_STEPS = 50;
    static final int ROWS = 5;                 /* number of rows in tissue */
 
    static final int COLS = 1;                 /* number of columns tissue */
@@ -42,6 +43,9 @@ public class JynacoreTissueMPJ {
 
    static final int FROM_WORKER = 2;           /* setting a message type */
 
+   private static final double TIME_FINAL = 5.0;
+   private static final double TIME_INITIAL = 0.0;
+   private static final int TIME_SKIP = 10;
    private static final Logger logger = Logger.getLogger("JynacoreTissueMPJ");
 
    /**
@@ -51,132 +55,121 @@ public class JynacoreTissueMPJ {
       int numtasks, /* number of tasks in partition */
               taskid, /* a task identifier */
               numworkers, /* number of worker tasks */
-              source, /* task id of message source */
-              dest, /* task id of message destination */
-              //nbytes,                    /* number of bytes in message */
-              mtype, /* message type */
-              rows, /* rows to sent to each worker */
-              averow, extra, offset, /* used to determine rows sent to each worker */
-              i, j, k, l, /* misc */
-              count;
+              rows = 0, /* rows to sent to each worker */
+              offset = 0; /* used to determine rows sent to each worker */
 
       MPI.Init(args);
       taskid = MPI.COMM_WORLD.Rank();
       numtasks = MPI.COMM_WORLD.Size();
       numworkers = numtasks - 1;
 
+      MetaModelStorer storer = new JDOMMetaModelStorer();
+      MetaModel metamodel = storer.loadFromFile(new File("planar.jymm"));
+      JynaSimulableModel instance = new DefaultMetaModelInstance();
+      ((MetaModelInstance) instance).setMetaModel(metamodel);
+
       JynaSimulation simulation = new DefaultMetaModelInstanceSimulation();
       JynaSimulationProfile profile = new DefaultSimulationProfile();
       JynaSimulationMethod method = new DefaultMetaModelInstanceEulerMethod();
-      JynaSimulableModel instance = new DefaultMetaModelInstance();
-      DefaultSimulationData data = new DefaultSimulationData();
 
-      MetaModelStorer storer = new JDOMMetaModelStorer();
-      MetaModel metamodel = storer.loadFromFile(new File("planar.jymm"));
-      ((MetaModelInstance) instance).setMetaModel(metamodel);
-      profile.setInitialTime(0.0);
-      profile.setFinalTime(5.0);
-      profile.setTimeSteps(500);
-      int skip = 10;
+      profile.setInitialTime(TIME_INITIAL);
+      profile.setFinalTime(TIME_FINAL);
+      profile.setTimeSteps(TIME_STEPS);
+
 
       simulation.setProfile(profile);
       simulation.setMethod(method);
-      data.clearAll();
 
 
-      MetaModelInstance mmi = createCells(instance, data);
-      connectCells(mmi);
-
-      simulation.setModel(instance);
-      simulation.setSimulationData(
-              (JynaSimulationData) data);
-      simulation.reset();
-      //runSimulation(simulation, skip);
-      data.register(0.0);
       if (taskid == MASTER) {
+         DefaultSimulationData data = new DefaultSimulationData();
+         data.clearAll();
+         createCells(instance, data);
+         connectCells(instance);
+         data.register(0.0);
 
-         /* send cells data to the worker tasks */
-         averow = ROWS / numworkers;
-         extra = ROWS % numworkers;
-         offset = 0;
-         mtype = FROM_MASTER;
-         int[] buffSendInt = new int[1];
-         for (dest = 1; dest <= numworkers; dest++) {
-            rows = (dest <= extra) ? averow + 1 : averow;
-            logger.log(Level.INFO, "MASTER:\n\tsending {0} rows to task {1}", new Object[]{rows, dest});
-            buffSendInt[0] = offset;
-            logger.log(Level.INFO, "MASTER:\n\tsending offest=\"{0}\" to task {1}", new Object[]{buffSendInt[0], dest});
-            MPI.COMM_WORLD.Send(buffSendInt, 0, 1, MPI.INT, dest, mtype);
-            buffSendInt[0] = rows;
-            logger.log(Level.INFO, "MASTER:\n\tsending rows=\"{0}\" to task {1}", new Object[]{buffSendInt[0], dest});
-            MPI.COMM_WORLD.Send(buffSendInt, 0, 1, MPI.INT, dest, mtype);
-            count = rows * COLS;
-            Object[] buffSendObject = new Object[count];
-            for (i = 0; i < count; i++) {
-               buffSendObject[i] = (Object) mmi.getClassInstances().get("cell[" + offset + i / COLS + "," + i % COLS + "]");
+         for (int step = 0; step < TIME_STEPS; step++) {
+            masterSendCellsToWorkers(numworkers, instance);
+            masterReceiveCellsFromWorkers(numworkers, instance, data);
+            if (step % TIME_SKIP == 0) {
+               data.register(TIME_INITIAL + step * (TIME_FINAL - TIME_INITIAL) / TIME_STEPS);
             }
-            logger.log(Level.INFO, "MASTER:\n\n\tSending MetaModelClassInstances to worker {1}: {0} \n\t", new Object[]{buffSendObject, dest});
-            MPI.COMM_WORLD.Send(buffSendObject, 0, count, MPI.OBJECT, dest, mtype);
-            offset = offset + rows;
          }
-         /* wait for results from all worker tasks */
-         mtype = FROM_WORKER;
-         int[] buffrecv = new int[1];
-         for (source = 1; source <= numworkers; source++) {
-            MPI.COMM_WORLD.Recv(buffrecv, 0, 1, MPI.INT, source, mtype);
-            offset = buffrecv[0];
-            logger.log(Level.INFO, "MASTER:\n\n\treceived offset=\"{0}\" from task {1}", new Object[]{buffSendInt[0], source});
-            MPI.COMM_WORLD.Recv(buffrecv, 0, 1, MPI.INT, source, mtype);
-            rows = buffrecv[0];
-            logger.log(Level.INFO, "MASTER:\n\n\treceived rows=\"{0}\" from task {1}", new Object[]{buffSendInt[0], source});
-            count = rows * COLS;
-            Object[] buffRecvObject = new Object[count];
-            MPI.COMM_WORLD.Recv(buffRecvObject, 0, count, MPI.OBJECT, source, mtype);
-            logger.log(Level.INFO, "MASTER:\n\n\tReceived Class Instances from task {0} : {1}\n\t", new Object[]{source, buffRecvObject});
-            for (i = 0; i < count; i++) {
-               mmi.getClassInstances().put("cell[" + offset + i / COLS + "," + i % COLS + "]", (ClassInstance) buffRecvObject[i]);
-            }
-            logger.log(Level.INFO, "MASTER:\n data after processing in workers:\n{0}", data);
-         }
+         logger.log(Level.INFO, "MASTER:\n data after processing in workers:\n{0}", data);
       }
 
       //**************************** worker task ************************************/
       if (taskid > MASTER) {
-         int[] buffrecv = new int[1];
-         mtype = FROM_MASTER;
-         source = MASTER;
-         logger.log(Level.INFO, "WORKER {0}:\nMaster ={1}, mtype={2}", new Object[]{taskid, source, mtype});
-         MPI.COMM_WORLD.Recv(buffrecv, 0, 1, MPI.INT, source, mtype);
-         offset = buffrecv[0];
-         logger.log(Level.INFO, "WORKER {0}\n received: offset={1}", new Object[]{taskid, offset});
-         MPI.COMM_WORLD.Recv(buffrecv, 0, 1, MPI.INT, source, mtype);
-         rows = buffrecv[0];
-         logger.log(Level.INFO, "WORKER {0}\n received: rows={1}", new Object[]{taskid, rows});
-         count = rows * COLS;
-         Object[] buffRecvObject = new Object[count];
-         MPI.COMM_WORLD.Recv(buffRecvObject, 0, count, MPI.OBJECT, source, mtype);
-         logger.log(Level.INFO, "WORKER {0}:\n Starting computing", taskid);
-         //TODO - Simulation here
-         logger.log(Level.INFO, "WORKER {0}:\n Done computing", taskid);
-         mtype = FROM_WORKER;
-         int[] buffSendInt = new int[1];
-         buffSendInt[0] = offset;
-         logger.log(Level.INFO, "WORKER {0}:\n Sending offset={1} to {2}", new Object[]{taskid, buffSendInt[0], MASTER});
-         MPI.COMM_WORLD.Send(buffSendInt, 0, 1, MPI.INT, MASTER, mtype);
-         buffSendInt[0] = rows;
-         logger.log(Level.INFO, "WORKER {0}:\n Sending offset={1} to {2}", new Object[]{taskid, buffSendInt[0], MASTER});
-         MPI.COMM_WORLD.Send(buffSendInt, 0, 1, MPI.INT, MASTER, mtype);
-         count = rows * COLS;
-         Object[] buffSendObject = new Object[count];
-         for (i = 0; i < count; i++) {
-            buffSendObject[i] = (Object) mmi.getClassInstances().get("cell[" + offset + i / COLS + "," + i % COLS + "]");
+
+         for (int step = 0; step < TIME_STEPS; step++) {
+            workerReceiveCellsFromMaster(taskid, offset, rows);
+            logger.log(Level.INFO, "WORKER {0}:\n Starting computing", taskid);
+            //TODO - Simulation here
+            logger.log(Level.INFO, "WORKER {0}:\n Done computing", taskid);
+            workerSendCellsToMaster(offset, rows, taskid, instance);
          }
-         logger.log(Level.INFO, "WORKER {0}:\n sending class instances to {1}", new Object[]{taskid, MASTER});
-         MPI.COMM_WORLD.Send(buffSendObject, 0, count, MPI.OBJECT, MASTER, mtype);
-         logger.log(Level.INFO, "WORKER {0}:\n data after processing:\n{1}", new Object[]{taskid, data});
       } // end of worker
 
       MPI.Finalize();
+   }
+
+   private static void masterReceiveCellsFromWorkers(int numworkers, JynaSimulableModel instance, DefaultSimulationData data) throws MPIException {
+      int mtype;
+      int rows;
+      int count;
+      int offset;
+      /* wait for results from all worker tasks */
+      mtype = FROM_WORKER;
+      int[] buffrecv = new int[1];
+      for (int source = 1; source <= numworkers; source++) {
+         MPI.COMM_WORLD.Recv(buffrecv, 0, 1, MPI.INT, source, mtype);
+         offset = buffrecv[0];
+         logger.log(Level.INFO, "MASTER:\n\n\treceived offset=\"{0}\" from task {1}", new Object[]{buffrecv[0], source});
+         MPI.COMM_WORLD.Recv(buffrecv, 0, 1, MPI.INT, source, mtype);
+         rows = buffrecv[0];
+         logger.log(Level.INFO, "MASTER:\n\n\treceived rows=\"{0}\" from task {1}", new Object[]{buffrecv[0], source});
+         count = rows * COLS;
+         Object[] buffRecvObject = new Object[count];
+         MPI.COMM_WORLD.Recv(buffRecvObject, 0, count, MPI.OBJECT, source, mtype);
+         logger.log(Level.INFO, "MASTER:\n\n\tReceived Class Instances from task {0} : {1}\n\t", new Object[]{source, buffRecvObject});
+         for (int i = 0; i < count; i++) {
+            ((MetaModelInstance) instance).getClassInstances().put("cell[" + offset + i / COLS + "," + i % COLS + "]", (ClassInstance) buffRecvObject[i]);
+         }
+      }
+   }
+
+   private static void masterSendCellsToWorkers(int numworkers, JynaSimulableModel instance) throws MPIException {
+      int extra;
+      int averow;
+      int rows;
+      int mtype;
+      int count;
+      int dest;
+      int offset;
+      /* send cells data to the worker tasks */
+      averow = ROWS / numworkers;
+      extra = ROWS % numworkers;
+      offset = 0;
+      mtype = FROM_MASTER;
+      int[] buffSendInt = new int[1];
+      for (dest = 1; dest <= numworkers; dest++) {
+         rows = (dest <= extra) ? averow + 1 : averow;
+         logger.log(Level.INFO, "MASTER:\n\tsending {0} rows to task {1}", new Object[]{rows, dest});
+         buffSendInt[0] = offset;
+         logger.log(Level.INFO, "MASTER:\n\tsending offset=\"{0}\" to task {1}", new Object[]{buffSendInt[0], dest});
+         MPI.COMM_WORLD.Send(buffSendInt, 0, 1, MPI.INT, dest, mtype);
+         buffSendInt[0] = rows;
+         logger.log(Level.INFO, "MASTER:\n\tsending rows=\"{0}\" to task {1}", new Object[]{buffSendInt[0], dest});
+         MPI.COMM_WORLD.Send(buffSendInt, 0, 1, MPI.INT, dest, mtype);
+         count = rows * COLS;
+         Object[] buffSendObject = new Object[count];
+         for (int i = 0; i < count; i++) {
+            buffSendObject[i] = (Object) ((MetaModelInstance) instance).getClassInstances().get("cell[" + offset + i / COLS + "," + i % COLS + "]");
+         }
+         logger.log(Level.INFO, "MASTER:\n\n\tSending MetaModelClassInstances to worker {1}: {0} \n\t", new Object[]{buffSendObject, dest});
+         MPI.COMM_WORLD.Send(buffSendObject, 0, count, MPI.OBJECT, dest, mtype);
+         offset = offset + rows;
+      }
    }
 
    private static void printMeshValues(DefaultSimulationData data) {
@@ -204,7 +197,8 @@ public class JynacoreTissueMPJ {
       logger.log(Level.INFO, "Simulating done!");
    }
 
-   private static void connectCells(MetaModelInstance mmi) throws MetaModelInstanceInvalidLinkException {
+   private static void connectCells(JynaSimulableModel instance) throws MetaModelInstanceInvalidLinkException {
+      MetaModelInstance mmi = (MetaModelInstance) instance;
       logger.log(Level.INFO, "Creating {0} class instance relations.", 4 * ROWS * COLS);
       for (int i = 0; i < ROWS; i++) {
          for (int j = 0; j < COLS; j++) {
@@ -229,5 +223,42 @@ public class JynacoreTissueMPJ {
          }
       }
       return mmi;
+   }
+
+   private static void workerReceiveCellsFromMaster(int taskid, int offset, int rows) {
+      int[] buffrecv = new int[1];
+      int mtype = FROM_MASTER;
+      int source = MASTER;
+      int count;
+      logger.log(Level.INFO, "WORKER {0}:\nMaster ={1}, mtype={2}", new Object[]{taskid, source, mtype});
+      MPI.COMM_WORLD.Recv(buffrecv, 0, 1, MPI.INT, source, mtype);
+      offset = buffrecv[0];
+      logger.log(Level.INFO, "WORKER {0}\n received: offset={1}", new Object[]{taskid, offset});
+      MPI.COMM_WORLD.Recv(buffrecv, 0, 1, MPI.INT, source, mtype);
+      rows = buffrecv[0];
+      logger.log(Level.INFO, "WORKER {0}\n received: rows={1}", new Object[]{taskid, rows});
+      count = rows * COLS;
+      Object[] buffRecvObject = new Object[count];
+      MPI.COMM_WORLD.Recv(buffRecvObject, 0, count, MPI.OBJECT, source, mtype);
+   }
+
+   private static void workerSendCellsToMaster(int offset, int rows, int taskid, JynaSimulableModel instance) {
+      int mtype = FROM_WORKER;
+      int[] buffSendInt = new int[1];
+      buffSendInt[0] = offset;
+      logger.log(Level.INFO, "WORKER {0}:\n Sending offset={1} to {2}", new Object[]{taskid, buffSendInt[0], MASTER});
+      MPI.COMM_WORLD.Send(buffSendInt, 0, 1, MPI.INT, MASTER, mtype);
+      buffSendInt[0] = rows;
+      logger.log(Level.INFO, "WORKER {0}:\n Sending offset={1} to {2}", new Object[]{taskid, buffSendInt[0], MASTER});
+      MPI.COMM_WORLD.Send(buffSendInt, 0, 1, MPI.INT, MASTER, mtype);
+      int count = rows * COLS;
+      Object[] buffSendObject = new Object[count];
+      int i;
+      for (i = 0; i < count; i++) {
+         buffSendObject[i] = (Object) ((MetaModelInstance) instance).getClassInstances().get("cell[" + offset + i / COLS + "," + i % COLS + "]");
+      }
+      logger.log(Level.INFO, "WORKER {0}:\n sending class instances to {1}", new Object[]{taskid, MASTER});
+      MPI.COMM_WORLD.Send(buffSendObject, 0, count, MPI.OBJECT, MASTER, mtype);
+      //logger.log(Level.INFO, "WORKER {0}:\n data after processing:\n{1}", new Object[]{taskid, null});
    }
 }
