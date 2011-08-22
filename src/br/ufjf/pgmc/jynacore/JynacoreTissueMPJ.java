@@ -103,13 +103,13 @@ public class JynacoreTissueMPJ {
          simulation.reset();
          for (int step = 0; step < TIME_STEPS; step++) {
             workerReceiveCellsFromMaster(taskid, offset, rows);
-            logger.log(Level.INFO, "WORKER {0}:\n Starting computing", taskid);
-            ((DefaultMetamodelInstanceEulerMethodMPJ) method).setOffset(offset);
-            ((DefaultMetamodelInstanceEulerMethodMPJ) method).setRows(rows);
-            ((DefaultMetamodelInstanceEulerMethodMPJ) method).setCols(COLS);
-            simulation.setModel(instance);
-            simulation.step();
             //TODO - Simulation here
+            logger.log(Level.INFO, "WORKER {0}:\n Starting computing", taskid);
+//            ((DefaultMetamodelInstanceEulerMethodMPJ) method).setOffset(offset);
+//            ((DefaultMetamodelInstanceEulerMethodMPJ) method).setRows(rows);
+//            ((DefaultMetamodelInstanceEulerMethodMPJ) method).setCols(COLS);
+//            simulation.setModel(instance);
+//            simulation.step();
             logger.log(Level.INFO, "WORKER {0}:\n Done computing", taskid);
             workerSendCellsToMaster(offset, rows, taskid, instance);
          }
