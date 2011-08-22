@@ -116,15 +116,14 @@ public class JynacoreTissueMPJ {
             logger.log(Level.INFO, "MASTER:\n\tsending rows=\"{0}\" to task {1}", new Object[]{buffSendInt[0], dest});
             MPI.COMM_WORLD.Send(buffSendInt, 0, 1, MPI.INT, dest, mtype);
             count = rows * COLS;
-            //TODO
             Object[] buffSendObject = new Object[count];
-            double[] asend = new double[count];
             for (i = 0; i < count; i++) {
                buffSendObject[i] = (Object) mmi.getClassInstances().get("cell[" + offset + i / COLS + "," + i % COLS + "]");
             }
-            logger.log(Level.INFO, "MASTER:\n\n\tSending MetaModelClassInstances to worker {1}: {0} \n\t", new Object[]{buffSendObject,dest});
+            logger.log(Level.INFO, "MASTER:\n\n\tSending MetaModelClassInstances to worker {1}: {0} \n\t", new Object[]{buffSendObject, dest});
             MPI.COMM_WORLD.Send(buffSendObject, 0, count, MPI.OBJECT, dest, mtype);
 //FIXME
+//            double[] asend = new double[count];
 //            for (i = offset; i < rows; i++) {
 //               for (j = 0; j < rows; j++) {
 //                  buffSendObject[i * COLS + j] = (Object) mmi.getClassInstances().get("cell[" + i + "," + j + "]");
@@ -159,6 +158,12 @@ public class JynacoreTissueMPJ {
             rows = buffrecv[0];
             logger.log(Level.INFO, "MASTER:\n\n\treceived rows=\"{0}\" from task {1}", new Object[]{buffSendInt[0], source});
             count = rows * COLS;
+            Object[] buffRecvObject = new Object[count];
+            MPI.COMM_WORLD.Recv(buffRecvObject, 0, count, MPI.OBJECT, source, mtype);
+            logger.log(Level.INFO, "MASTER:\n\n\tReceived Class Instances from task {0} : {1}\n\t", new Object[]{source, buffRecvObject});
+            for (i = 0; i < count; i++) {
+               mmi.getClassInstances().put("cell[" + offset + i / COLS + "," + i % COLS + "]", (ClassInstance) buffRecvObject[i]);
+            }
             //TODO double[] crecv = new double[count];
             //MPI.COMM_WORLD.Recv(crecv, 0, count, MPI.DOUBLE, source, mtype);
             //logger.info("MASTER:\n\n\tReceived from task "+source+" C:\n\t");
@@ -245,7 +250,13 @@ public class JynacoreTissueMPJ {
          logger.log(Level.INFO, "WORKER {0}:\n Sending offset={1} to {2}", new Object[]{taskid, buffSendInt[0], MASTER});
          MPI.COMM_WORLD.Send(buffSendInt, 0, 1, MPI.INT, MASTER, mtype);
          count = rows * COLS;
-         double[] csend = new double[count];
+         Object[] buffSendObject = new Object[count];
+         for (i = 0; i < count; i++) {
+            buffSendObject[i] = (Object) mmi.getClassInstances().get("cell[" + offset + i / COLS + "," + i % COLS + "]");
+         }
+         logger.log(Level.INFO, "WORKER {0}:\n sending class instances to {1}", new Object[]{taskid, MASTER});
+         MPI.COMM_WORLD.Send(buffSendObject, 0, count, MPI.OBJECT, MASTER, mtype);
+//         double[] csend = new double[count];
          //for (i = 0; i < count; i++) {
 //TODO csend[i] = c[offset + i / NCA][i % NCB];
          //}
