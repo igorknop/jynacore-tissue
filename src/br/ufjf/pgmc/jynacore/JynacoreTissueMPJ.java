@@ -31,17 +31,17 @@ import mpi.*;
  * @author igor
  */
 public class JynacoreTissueMPJ {
-   
+
    static final int ROWS = 4;                 /* number of rows in tissue */
-   
+
    static final int COLS = 4;                 /* number of columns tissue */
-   
+
    static final int MASTER = 0;                /* taskid of first task */
-   
+
    static final int FROM_MASTER = 1;           /* setting a message type */
-   
+
    static final int FROM_WORKER = 2;           /* setting a message type */
-   
+
    private static final Logger logger = Logger.getLogger("JynacoreTissueMPJ");
 
    /**
@@ -68,14 +68,14 @@ public class JynacoreTissueMPJ {
       taskid = MPI.COMM_WORLD.Rank();
       numtasks = MPI.COMM_WORLD.Size();
       numworkers = numtasks - 1;
-      
+
       JynaSimulation simulation = new DefaultMetaModelInstanceSimulation();
       JynaSimulationProfile profile = new DefaultSimulationProfile();
       //TODO - Add a MPJ
       JynaSimulationMethod method = new DefaultMetaModelInstanceEulerMethod();
       JynaSimulableModel instance = new DefaultMetaModelInstance();
       DefaultSimulationData data = new DefaultSimulationData();
-      
+
       MetaModelStorer storer = new JDOMMetaModelStorer();
       MetaModel metamodel = storer.loadFromFile(new File("planar.jymm"));
       ((MetaModelInstance) instance).setMetaModel(metamodel);
@@ -83,15 +83,15 @@ public class JynacoreTissueMPJ {
       profile.setFinalTime(5.0);
       profile.setTimeSteps(500);
       int skip = 10;
-      
+
       simulation.setProfile(profile);
       simulation.setMethod(method);
       data.clearAll();
-      
-      
+
+
       MetaModelInstance mmi = createCells(instance, data);
       connectCells(mmi);
-      
+
       simulation.setModel(instance);
       simulation.setSimulationData(
               (JynaSimulationData) data);
@@ -117,6 +117,19 @@ public class JynacoreTissueMPJ {
             MPI.COMM_WORLD.Send(buffSendInt, 0, 1, MPI.INT, dest, mtype);
             count = rows * COLS;
             //TODO
+            Object[] buffSendObject = new Object[count];
+            double[] asend = new double[count];
+            for (i = 0; i < count; i++) {
+               buffSendObject[i] = (Object) mmi.getClassInstances().get("cell[" + offset + i / COLS + "," + i % COLS + "]");
+            }
+            logger.log(Level.INFO, "MASTER:\n\n\tSending MetaModelClassInstances to worker {1}: {0} \n\t", new Object[]{buffSendObject,dest});
+            MPI.COMM_WORLD.Send(buffSendObject, 0, count, MPI.OBJECT, dest, mtype);
+//FIXME
+//            for (i = offset; i < rows; i++) {
+//               for (j = 0; j < rows; j++) {
+//                  buffSendObject[i * COLS + j] = (Object) mmi.getClassInstances().get("cell[" + i + "," + j + "]");
+//               }
+//            }
 //        double[] asend = new double[count];
 //        for (i = 0; i < count; i++) {
 //          asend[i] = a[offset + i / COLS][i % COLS];
@@ -151,7 +164,7 @@ public class JynacoreTissueMPJ {
             //logger.info("MASTER:\n\n\tReceived from task "+source+" C:\n\t");
             //for(i=0;i<count;i++) System.out.print(" "+crecv[i]);
             //for (i = 0; i < count; i++) {
-               //FIXMEc[offset + i / NRA][i % NCB] = crecv[i];
+            //FIXMEc[offset + i / NRA][i % NCB] = crecv[i];
             //}
          }
       }
@@ -170,9 +183,10 @@ public class JynacoreTissueMPJ {
          //logger.info("WORKER "+taskid+"\n received: rows="+rows);
          count = rows * COLS;
          double[] arecv = new double[count];
-         //MPI.COMM_WORLD.Recv(arecv, 0, count, MPI.DOUBLE, source, mtype);
+         Object[] buffRecvObject = new Object[count];
+         MPI.COMM_WORLD.Recv(buffRecvObject, 0, count, MPI.OBJECT, source, mtype);
          //for (i = 0; i < count; i++) {
-            //FIXMEa[offset + i / COLS][i % COLS] = arecv[i];
+         //FIXMEa[offset + i / COLS][i % COLS] = arecv[i];
          //}
          //logger.info("WORKER "+taskid+"\n\ttask "+taskid+" received A:\n\t");
          //for(i=0;i<count;i++) System.out.print(" "+arecv[i]);
@@ -220,7 +234,7 @@ public class JynacoreTissueMPJ {
          }
          System.out.print("\n");
           */
-         
+
          mtype = FROM_WORKER;
          //logger.info("WORKER "+taskid+":\n After computing");
          int[] buffSendInt = new int[1];
@@ -240,16 +254,16 @@ public class JynacoreTissueMPJ {
          //MPI.COMM_WORLD.Send(csend, 0, count, MPI.DOUBLE, MASTER, mtype);
          //logger.info("WORKER "+taskid+":\n done sending data to "+MASTER);
       } // end of worker
-      
+
       MPI.Finalize();
       System.out.println(data.getWatchedNames());
-      System.out.println(data);      
+      System.out.println(data);
    }
-   
+
    private static void runSimulation(JynaSimulation simulation, int skip) throws Exception {
       //simulation.run();
       int steps = simulation.getProfile().getTimeSteps();
-      
+
       logger.log(Level.INFO, "Simulating with {0} iterations.", steps);
       for (int i = 0;
               i < steps;
@@ -261,7 +275,7 @@ public class JynacoreTissueMPJ {
       }
       logger.log(Level.INFO, "Simulating done!");
    }
-   
+
    private static void connectCells(MetaModelInstance mmi) throws MetaModelInstanceInvalidLinkException {
       logger.log(Level.INFO, "Creating {0} class instance relations.", 4 * ROWS * COLS);
       for (int i = 0; i < ROWS; i++) {
@@ -274,7 +288,7 @@ public class JynacoreTissueMPJ {
          }
       }
    }
-   
+
    private static MetaModelInstance createCells(JynaSimulableModel instance, DefaultSimulationData data) throws Exception {
       instance.setName("Tissue");
       MetaModelInstance mmi = (MetaModelInstance) instance;
