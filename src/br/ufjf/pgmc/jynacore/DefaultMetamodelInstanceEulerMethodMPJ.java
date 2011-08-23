@@ -4,6 +4,7 @@
  */
 package br.ufjf.pgmc.jynacore;
 
+import br.ufjf.mmc.jynacore.expression.impl.DefaultNumberConstantExpression;
 import br.ufjf.mmc.jynacore.metamodel.exceptions.instance.MetaModelInstanceException;
 import br.ufjf.mmc.jynacore.metamodel.instance.ClassInstance;
 import br.ufjf.mmc.jynacore.metamodel.instance.ClassInstanceAuxiliary;
@@ -16,6 +17,7 @@ import br.ufjf.mmc.jynacore.metamodel.instance.ClassInstanceStock;
 import br.ufjf.mmc.jynacore.metamodel.instance.MetaModelInstance;
 import br.ufjf.mmc.jynacore.metamodel.simulator.impl.DefaultMetaModelInstanceEulerMethod;
 import br.ufjf.mmc.jynacore.systemdynamics.Variable;
+import br.ufjf.mmc.jynacore.systemdynamics.impl.DefaultVariable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -26,7 +28,6 @@ import java.util.Map.Entry;
  */
 public class DefaultMetamodelInstanceEulerMethodMPJ extends DefaultMetaModelInstanceEulerMethod {
 
-  
    private int offset;
    private int rows;
    private int cols;
@@ -45,7 +46,21 @@ public class DefaultMetamodelInstanceEulerMethodMPJ extends DefaultMetaModelInst
    private Variable _TIME_STEP_;
 
    public DefaultMetamodelInstanceEulerMethodMPJ() {
-      super();
+		rates = new HashMap<String, ClassInstanceRate>();
+		levels = new HashMap<String, ClassInstanceStock>();
+		auxiliaries = new HashMap<String, ClassInstanceAuxiliary>();
+		properties = new HashMap<String, ClassInstanceProperty>();
+		singleRelations = new HashMap<String, ClassInstanceSingleRelation>();
+		multiRelations = new HashMap<String, ClassInstanceMultiRelation>();
+		currentTime = 0.0;
+		currentStep = 0;
+		initialTime = 0.0;
+		_TIME_ = new DefaultVariable();
+		_TIME_.setName("_TIME_");
+		_TIME_.setExpression(new DefaultNumberConstantExpression(currentTime));
+		_TIME_STEP_ = new DefaultVariable();
+		_TIME_STEP_.setName("_TIME_STEP_");
+		_TIME_STEP_.setExpression(new DefaultNumberConstantExpression(stepSize));
    }
 
    public int getCols() {
@@ -130,8 +145,6 @@ public class DefaultMetamodelInstanceEulerMethodMPJ extends DefaultMetaModelInst
    private void setupReferences() throws Exception {
       modelInstance.updateReferences();
    }
-
-   
 
    private String getKey(String classInstanceName, String ciLevelName) {
       return classInstanceName + "." + ciLevelName;
