@@ -6,7 +6,6 @@ package br.ufjf.pgmc.jynacore;
 
 import br.ufjf.mmc.jynacore.JynaSimulableModel;
 import br.ufjf.mmc.jynacore.JynaSimulation;
-import br.ufjf.mmc.jynacore.JynaSimulationData;
 import br.ufjf.mmc.jynacore.JynaSimulationMethod;
 import br.ufjf.mmc.jynacore.JynaSimulationProfile;
 import br.ufjf.mmc.jynacore.JynaValued;
@@ -17,11 +16,15 @@ import br.ufjf.mmc.jynacore.metamodel.MetaModelStorer;
 import br.ufjf.mmc.jynacore.metamodel.exceptions.instance.MetaModelInstanceInvalidLinkException;
 import br.ufjf.mmc.jynacore.metamodel.impl.JDOMMetaModelStorer;
 import br.ufjf.mmc.jynacore.metamodel.instance.ClassInstance;
+import br.ufjf.mmc.jynacore.metamodel.instance.ClassInstanceItem;
+import br.ufjf.mmc.jynacore.metamodel.instance.ClassInstanceStock;
 import br.ufjf.mmc.jynacore.metamodel.instance.MetaModelInstance;
 import br.ufjf.mmc.jynacore.metamodel.instance.impl.DefaultMetaModelInstance;
-import br.ufjf.mmc.jynacore.metamodel.simulator.impl.DefaultMetaModelInstanceEulerMethod;
 import br.ufjf.mmc.jynacore.metamodel.simulator.impl.DefaultMetaModelInstanceSimulation;
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import mpi.*;
@@ -33,7 +36,7 @@ import mpi.*;
 public class JynacoreTissueMPJ {
 
    public static final int TIME_STEPS = 50;
-   static final int ROWS = 5;                 /* number of rows in tissue */
+   static final int ROWS = 1;                 /* number of rows in tissue */
 
    static final int COLS = 1;                 /* number of columns tissue */
 
@@ -65,21 +68,23 @@ public class JynacoreTissueMPJ {
 
       MetaModelStorer storer = new JDOMMetaModelStorer();
       MetaModel metamodel = storer.loadFromFile(new File("planar.jymm"));
-      JynaSimulableModel instance = new DefaultMetaModelInstance();
-      ((MetaModelInstance) instance).setMetaModel(metamodel);
+      JynaSimulableModel metaModelInstance = new DefaultMetaModelInstance();
+      ((MetaModelInstance) metaModelInstance).setMetaModel(metamodel);
 
 
 
-      if (taskid == MASTER) {
          DefaultSimulationData data = new DefaultSimulationData();
          data.clearAll();
-         createCells(instance, data);
-         connectCells(instance);
+         createCells(metaModelInstance, data);
+         connectCells(metaModelInstance);
+         
+      if (taskid == MASTER) {
          data.register(0.0);
-
+         logger.log(Level.INFO, "MASTER:\n Entering in simulation loop:\n");
          for (int step = 0; step < TIME_STEPS; step++) {
-            masterSendCellsToWorkers(numworkers, instance);
-            masterReceiveCellsFromWorkers(numworkers, instance, data);
+            logger.log(Level.INFO, "MASTER:\n\titeration: {0}\n", step);
+            masterSendCellsToWorkers(numworkers, metaModelInstance);
+            masterReceiveCellsFromWorkers(numworkers, metaModelInstance, data);
             if (step % TIME_SKIP == 0) {
                data.register(TIME_INITIAL + step * (TIME_FINAL - TIME_INITIAL) / TIME_STEPS);
             }
@@ -100,9 +105,9 @@ public class JynacoreTissueMPJ {
 
          simulation.setProfile(profile);
          simulation.setMethod(method);
-         simulation.reset();
+         // simulation.reset();
          for (int step = 0; step < TIME_STEPS; step++) {
-            workerReceiveCellsFromMaster(taskid, offset, rows);
+            workerReceiveCellsFromMaster(taskid, offset, rows, (MetaModelInstance) metaModelInstance);
             //TODO - Simulation here
             logger.log(Level.INFO, "WORKER {0}:\n Starting computing", taskid);
 //            ((DefaultMetamodelInstanceEulerMethodMPJ) method).setOffset(offset);
@@ -111,7 +116,7 @@ public class JynacoreTissueMPJ {
 //            simulation.setModel(instance);
 //            simulation.step();
             logger.log(Level.INFO, "WORKER {0}:\n Done computing", taskid);
-            workerSendCellsToMaster(offset, rows, taskid, instance);
+            workerSendCellsToMaster(offset, rows, taskid, metaModelInstance);
          }
       } // end of worker
 
@@ -138,7 +143,8 @@ public class JynacoreTissueMPJ {
          MPI.COMM_WORLD.Recv(buffRecvObject, 0, count, MPI.OBJECT, source, mtype);
          logger.log(Level.INFO, "MASTER:\n\n\tReceived Class Instances from task {0} : {1}\n\t", new Object[]{source, buffRecvObject});
          for (int i = 0; i < count; i++) {
-            ((MetaModelInstance) instance).getClassInstances().put("cell[" + offset + i / COLS + "," + i % COLS + "]", (ClassInstance) buffRecvObject[i]);
+            MetaModelInstance mmi = (MetaModelInstance) instance;
+            mmi.getClassInstances().put("cell[" + offset + i / COLS + "," + i % COLS + "]", (ClassInstance) buffRecvObject[i]);
          }
       }
    }
@@ -148,7 +154,7 @@ public class JynacoreTissueMPJ {
       int averow;
       int rows;
       int mtype;
-      int count;
+      int cellCount;
       int dest;
       int offset;
       /* send cells data to the worker tasks */
@@ -166,13 +172,34 @@ public class JynacoreTissueMPJ {
          buffSendInt[0] = rows;
          logger.log(Level.INFO, "MASTER:\n\tsending rows=\"{0}\" to task {1}", new Object[]{buffSendInt[0], dest});
          MPI.COMM_WORLD.Send(buffSendInt, 0, 1, MPI.INT, dest, mtype);
-         count = rows * COLS;
-         Object[] buffSendObject = new Object[count];
-         for (int i = 0; i < count; i++) {
-            buffSendObject[i] = (Object) ((MetaModelInstance) instance).getClassInstances().get("cell[" + offset + i / COLS + "," + i % COLS + "]");
+         cellCount = rows * COLS;
+
+         Map<String, Object> omap = new HashMap<String, Object>();
+         MetaModelInstance mmi = (MetaModelInstance) instance;
+         for (int cellIndex = 0; cellIndex < cellCount; cellIndex++) {
+            String ciName = "cell[" + (offset + cellIndex / COLS) + "," + cellIndex % COLS + "]";
+            ClassInstance ci = mmi.getClassInstances().get(ciName);
+            for (Entry<String, ClassInstanceItem> entrycii : ci.entrySet()) {
+               if (entrycii.getValue() instanceof ClassInstanceStock) {
+                  omap.put(ci.getName() + "." + entrycii.getKey(), ((ClassInstanceStock) entrycii.getValue()).getValue());
+                  logger.log(Level.INFO, "MASTER:\n\t\tFound {0} total:\"{1}\" to task {2}", new Object[]{entrycii.getKey(), omap.size(), dest});
+               }
+            }
          }
+         int countToSend = omap.size() * 2;
+         Object[] buffSendObject = new Object[countToSend];
+         int oindex = 0;
+         for (Entry<String, Object> e : omap.entrySet()) {
+            buffSendObject[oindex] = e.getKey();
+            buffSendObject[++oindex] = e.getValue();
+         }
+
+         buffSendInt[0] = countToSend;
+         logger.log(Level.INFO, "MASTER:\n\tsending level count=\"{0}\" to task {1}", new Object[]{buffSendInt[0], dest});
+         MPI.COMM_WORLD.Send(buffSendInt, 0, 1, MPI.INT, dest, mtype);
+
          logger.log(Level.INFO, "MASTER:\n\n\tSending MetaModelClassInstances to worker {1}: {0} \n\t", new Object[]{buffSendObject, dest});
-         MPI.COMM_WORLD.Send(buffSendObject, 0, count, MPI.OBJECT, dest, mtype);
+         MPI.COMM_WORLD.Send(buffSendObject, 0, countToSend, MPI.OBJECT, dest, mtype);
          offset = offset + rows;
       }
    }
@@ -230,21 +257,42 @@ public class JynacoreTissueMPJ {
       return mmi;
    }
 
-   private static void workerReceiveCellsFromMaster(int taskid, int offset, int rows) {
+   private static void workerReceiveCellsFromMaster(int taskid, int offset, int rows, MetaModelInstance modelInstance) {
       int[] buffrecv = new int[1];
       int mtype = FROM_MASTER;
       int source = MASTER;
-      int count;
       logger.log(Level.INFO, "WORKER {0}:\nMaster ={1}, mtype={2}", new Object[]{taskid, source, mtype});
+
       MPI.COMM_WORLD.Recv(buffrecv, 0, 1, MPI.INT, source, mtype);
       offset = buffrecv[0];
       logger.log(Level.INFO, "WORKER {0}\n received: offset={1}", new Object[]{taskid, offset});
+
       MPI.COMM_WORLD.Recv(buffrecv, 0, 1, MPI.INT, source, mtype);
       rows = buffrecv[0];
       logger.log(Level.INFO, "WORKER {0}\n received: rows={1}", new Object[]{taskid, rows});
-      count = rows * COLS;
-      Object[] buffRecvObject = new Object[count];
-      MPI.COMM_WORLD.Recv(buffRecvObject, 0, count, MPI.OBJECT, source, mtype);
+
+      MPI.COMM_WORLD.Recv(buffrecv, 0, 1, MPI.INT, source, mtype);
+      int ocount = buffrecv[0];
+      logger.log(Level.INFO, "WORKER {0}\n received: level count={1}", new Object[]{taskid, ocount});
+
+
+      int cellCount = rows * COLS;
+      Object[] buffRecvObject = new Object[ocount];
+      MPI.COMM_WORLD.Recv(buffRecvObject, 0, ocount, MPI.OBJECT, source, mtype);
+      logger.log(Level.INFO, "WORKER {0}\n received: {1} objects", new Object[]{taskid, buffRecvObject.length}); 
+      for (int i = 0; i < ocount; i += 2) {
+         String ciString = (String) buffRecvObject[i];
+         logger.log(Level.INFO, "WORKER {0}\n\t\tString to parse: {1}", new Object[]{taskid,ciString});
+         String[] ciNameTokens = ciString.split("\\.");
+         String ciName = ciNameTokens[0];
+         String ciField = ciNameTokens[1];
+         Double ciValue =  (Double) buffRecvObject[i + 1];
+         ClassInstance ci = modelInstance.getClassInstances().get(ciName);
+         ClassInstanceItem cii = ci.get(ciField);
+         ((ClassInstanceStock) cii).setValue(ciValue);
+         logger.log(Level.INFO, "WORKER {0}\n setting {1}.{2}={4} to {3}", new Object[]{taskid, ciName, ciField, cii.getName(), buffRecvObject[i + 1]});
+      }
+
    }
 
    private static void workerSendCellsToMaster(int offset, int rows, int taskid, JynaSimulableModel instance) {
