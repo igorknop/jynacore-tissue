@@ -220,8 +220,10 @@ public class JynacoreTissueMPJ {
          int oindex = 0;
          for (Entry<String, Object> e : omap.entrySet()) {
             buffSendObject[oindex] = e.getKey();
-            buffSendObject[++oindex] = e.getValue();
+            buffSendObject[oindex+1] = e.getValue();
+            oindex +=2;
          }
+         logger.log(Level.INFO, "MASTER:\n\tbuffer to send to task {0}: {1}", new Object[]{dest, buffSendInt});
 
          buffSendInt[0] = countToSend;
          logger.log(Level.INFO, "MASTER:\n\tsending level count=\"{0}\" to task {1}", new Object[]{buffSendInt[0], dest});
@@ -307,7 +309,7 @@ public class JynacoreTissueMPJ {
       Object[] buffRecvObject = new Object[ocount];
       MPI.COMM_WORLD.Recv(buffRecvObject, 0, ocount, MPI.OBJECT, source, mtype);
       logger.log(Level.INFO, "WORKER {0}\n received: {1} objects", new Object[]{taskid, buffRecvObject.length});
-      for (int i = 0; i < ocount; i += 2) {
+      for (int i = 0; i < ocount-1; i += 2) {
          String ciString = (String) buffRecvObject[i];
          logger.log(Level.INFO, "WORKER {0}\n\t\tString to parse: {1} = {2}", new Object[]{taskid, ciString, buffRecvObject[i+1]});
          String[] ciNameTokens = ciString.split("\\.");
