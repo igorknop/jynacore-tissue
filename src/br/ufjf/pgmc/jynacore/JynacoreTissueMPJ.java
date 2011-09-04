@@ -346,7 +346,7 @@ public class JynacoreTissueMPJ {
             }
          }
       }
-      logger.log(Level.INFO, "WORKER {0}:\n\t\tReceived levels :\"{2}\" from master", new Object[]{taskid, omap.size()});
+      logger.log(Level.INFO, "WORKER {0}:\n\t\tReceived levels :\"{1}\" from master", new Object[]{taskid, omap.size()});
       int countToSend = omap.size() * 2;
       Object[] buffSendObject = new Object[countToSend];
       int oindex = 0;
