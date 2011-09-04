@@ -352,7 +352,8 @@ public class JynacoreTissueMPJ {
       int oindex = 0;
       for (Entry<String, Object> e : omap.entrySet()) {
          buffSendObject[oindex] = e.getKey();
-         buffSendObject[++oindex] = e.getValue();
+         buffSendObject[oindex+1] = e.getValue();
+         oindex += 2;
       }
       buffSendInt[0] = countToSend;
       logger.log(Level.INFO, "Worker {0}:\n\tsending level count=\"{1}\" to master", new Object[]{taskid, buffSendInt[0]});
