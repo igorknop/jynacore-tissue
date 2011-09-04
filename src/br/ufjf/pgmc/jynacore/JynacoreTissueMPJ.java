@@ -50,8 +50,8 @@ public class JynacoreTissueMPJ {
 
    private static final double TIME_INITIAL = 0.0;
    private static final double TIME_FINAL = 5.0;
-   public static final int TIME_STEPS = 50;
-   private static final int TIME_SKIP = 1;
+   public static final int TIME_STEPS = 500;
+   private static final int TIME_SKIP = 100;
    private static final Logger logger = Logger.getLogger("JynacoreTissueMPJ");
 
    /**
@@ -208,12 +208,12 @@ public class JynacoreTissueMPJ {
          buffSendInt[0] = rows;
          logger.log(Level.INFO, "M: sending rows=\"{0}\" to W{1}", new Object[]{buffSendInt[0], dest});
          MPI.COMM_WORLD.Send(buffSendInt, 0, 1, MPI.INT, dest, mtype);
-         cellCount = rows * COLS;
+         cellCount = ROWS * COLS;
 
          Map<String, Object> omap = new HashMap<String, Object>();
 
          for (int cellIndex = 0; cellIndex < cellCount; cellIndex++) {
-            String ciName = "cell[" + (offset + cellIndex / COLS) + "," + cellIndex % COLS + "]";
+            String ciName = "cell[" + (cellIndex / COLS) + "," + cellIndex % COLS + "]";
             ClassInstance ci = metamodelInstance.getClassInstances().get(ciName);
             for (Entry<String, ClassInstanceItem> entrycii : ci.entrySet()) {
                if (entrycii.getValue() instanceof ClassInstanceStock) {
