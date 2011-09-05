@@ -21,6 +21,8 @@ import br.ufjf.mmc.jynacore.systemdynamics.impl.DefaultVariable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -44,23 +46,24 @@ public class DefaultMetamodelInstanceEulerMethodMPJ extends DefaultMetaModelInst
    private Map<String, ClassInstanceMultiRelation> multiRelations;
    private Variable _TIME_;
    private Variable _TIME_STEP_;
+   private static final Logger logger = Logger.getLogger("DefaultMetamodelInstanceEulerMethodMPJ");
 
    public DefaultMetamodelInstanceEulerMethodMPJ() {
-		rates = new HashMap<String, ClassInstanceRate>();
-		levels = new HashMap<String, ClassInstanceStock>();
-		auxiliaries = new HashMap<String, ClassInstanceAuxiliary>();
-		properties = new HashMap<String, ClassInstanceProperty>();
-		singleRelations = new HashMap<String, ClassInstanceSingleRelation>();
-		multiRelations = new HashMap<String, ClassInstanceMultiRelation>();
-		currentTime = 0.0;
-		currentStep = 0;
-		initialTime = 0.0;
-		_TIME_ = new DefaultVariable();
-		_TIME_.setName("_TIME_");
-		_TIME_.setExpression(new DefaultNumberConstantExpression(currentTime));
-		_TIME_STEP_ = new DefaultVariable();
-		_TIME_STEP_.setName("_TIME_STEP_");
-		_TIME_STEP_.setExpression(new DefaultNumberConstantExpression(stepSize));
+      rates = new HashMap<String, ClassInstanceRate>();
+      levels = new HashMap<String, ClassInstanceStock>();
+      auxiliaries = new HashMap<String, ClassInstanceAuxiliary>();
+      properties = new HashMap<String, ClassInstanceProperty>();
+      singleRelations = new HashMap<String, ClassInstanceSingleRelation>();
+      multiRelations = new HashMap<String, ClassInstanceMultiRelation>();
+      currentTime = 0.0;
+      currentStep = 0;
+      initialTime = 0.0;
+      _TIME_ = new DefaultVariable();
+      _TIME_.setName("_TIME_");
+      _TIME_.setExpression(new DefaultNumberConstantExpression(currentTime));
+      _TIME_STEP_ = new DefaultVariable();
+      _TIME_STEP_.setName("_TIME_STEP_");
+      _TIME_STEP_.setExpression(new DefaultNumberConstantExpression(stepSize));
    }
 
    public int getCols() {
@@ -96,11 +99,12 @@ public class DefaultMetamodelInstanceEulerMethodMPJ extends DefaultMetaModelInst
       properties.clear();
       singleRelations.clear();
       multiRelations.clear();
+      logger.log(Level.INFO, "Going to add only classinstances in offset={0} rows={1} cols={2}!", new Object[]{getOffset(), getRows(), getCols()});
       for (int i = offset; i < rows; i++) {
-         for (int j = 0; i < cols; j++) {
+         for (int j = 0; j < cols; j++) {
             String classInstanceName = "cell[" + i + "," + j + "]";
             ClassInstance classInstance = modelInstance.getClassInstances().get(classInstanceName);
-
+            logger.log(Level.INFO, "Looking for class instance {0}: {1}!", new Object[]{classInstanceName, classInstance == null ? "Missing" : "Found"});
             for (Entry<String, ClassInstanceItem> ciItem : classInstance.entrySet()) {
                if (ciItem.getValue() instanceof ClassInstanceStock) {
                   ClassInstanceStock ciLevel = (ClassInstanceStock) ciItem.getValue();
@@ -148,5 +152,11 @@ public class DefaultMetamodelInstanceEulerMethodMPJ extends DefaultMetaModelInst
 
    private String getKey(String classInstanceName, String ciLevelName) {
       return classInstanceName + "." + ciLevelName;
+   }
+
+   @Override
+   public void step() throws Exception {
+      logger.log(Level.INFO, "SetRows offset={0} rows={1} cols={2}!", new Object[]{getOffset(), getRows(), getCols()});
+      super.step();
    }
 }

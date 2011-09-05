@@ -23,7 +23,6 @@ import br.ufjf.mmc.jynacore.metamodel.instance.impl.DefaultMetaModelInstance;
 import br.ufjf.mmc.jynacore.metamodel.simulator.impl.DefaultMetaModelInstanceEulerMethod;
 import br.ufjf.mmc.jynacore.metamodel.simulator.impl.DefaultMetaModelInstanceSimulation;
 import java.io.File;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -50,8 +49,8 @@ public class JynacoreTissueMPJ {
 
    private static final double TIME_INITIAL = 0.0;
    private static final double TIME_FINAL = 5.0;
-   public static final int TIME_STEPS = 500;
-   private static final int TIME_SKIP = 100;
+   public static final int TIME_STEPS = 50;
+   private static final int TIME_SKIP = 10;
    private static final Logger logger = Logger.getLogger("JynacoreTissueMPJ");
 
    /**
@@ -118,7 +117,7 @@ public class JynacoreTissueMPJ {
       if (taskid > MASTER) {
          JynaSimulation simulation = new DefaultMetaModelInstanceSimulation();
          JynaSimulationProfile profile = new DefaultSimulationProfile();
-         JynaSimulationMethod method = new DefaultMetaModelInstanceEulerMethod();
+         JynaSimulationMethod method = new DefaultMetaModelInstanceEulerMethodMPJ2();
 
          profile.setInitialTime(TIME_INITIAL);
          profile.setFinalTime(TIME_FINAL);
@@ -127,15 +126,15 @@ public class JynacoreTissueMPJ {
 
          simulation.setProfile(profile);
          simulation.setMethod(method);
-         simulation.setModel(metaModelInstance);
+         //simulation.setModel(metaModelInstance);
          Map<String, Integer> params;
          for (int step = 0; step < TIME_STEPS; step++) {
             params = workerReceiveCellsFromMaster(taskid, offset, rows, (MetaModelInstance) metaModelInstance);
-            //TODO - Simulation here
             logger.log(Level.INFO, "W{0}:   Starting computing", taskid);
-//            ((DefaultMetamodelInstanceEulerMethodMPJ) method).setOffset(offset);
-//            ((DefaultMetamodelInstanceEulerMethodMPJ) method).setRows(rows);
-//            ((DefaultMetamodelInstanceEulerMethodMPJ) method).setCols(COLS);
+            ((DefaultMetaModelInstanceEulerMethodMPJ2) method).setOffset(params.get("offset"));
+            ((DefaultMetaModelInstanceEulerMethodMPJ2) method).setRows(params.get("rows"));
+            ((DefaultMetaModelInstanceEulerMethodMPJ2) method).setCols(COLS);
+            simulation.setModel(metaModelInstance);
             logger.log(Level.INFO, "W{0}:   cell[0,0] = {1}", new Object[]{taskid, ((ClassInstanceStock) metaModelInstance.getClassInstances().get("cell[0,0]").get("Value")).getValue()});
             simulation.step();
             logger.log(Level.INFO, "W{0}:   cell[0,0] = {1}", new Object[]{taskid, ((ClassInstanceStock) metaModelInstance.getClassInstances().get("cell[0,0]").get("Value")).getValue()});
