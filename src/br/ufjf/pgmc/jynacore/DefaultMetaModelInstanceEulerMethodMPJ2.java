@@ -312,9 +312,9 @@ public class DefaultMetaModelInstanceEulerMethodMPJ2 implements
       for (Entry<String, ClassInstanceRate> entry : rates.entrySet()) {
          ClassInstanceRate rate = entry.getValue();
          if (!isInRange(rate)) {
-            return;
+            continue;
          }
-         if (rate.getValue() == null && isInRange(rate)) {
+         if (rate.getValue() == null) {
             rate.setValue((Double) rate.getExpression().evaluate());
          }
       }
@@ -323,7 +323,7 @@ public class DefaultMetaModelInstanceEulerMethodMPJ2 implements
       for (Entry<String, ClassInstanceRate> entry : rates.entrySet()) {
          ClassInstanceRate rate = entry.getValue();
          if (!isInRange(rate)) {
-            return;
+            continue;
          }
          if (rate.getSource() instanceof ClassInstanceStock) {
             ClassInstanceStock flevel = rate.getSource();
@@ -349,7 +349,7 @@ public class DefaultMetaModelInstanceEulerMethodMPJ2 implements
       Integer ciRow = Integer.valueOf(ciParts[0].replace("cell[", ""));
       Integer ciCol = Integer.valueOf(ciParts[1].replace("]", ""));
       Boolean isIt = (getOffset() <= ciRow && ciRow <= (getOffset() + getRows()));
-      logger.log(Level.INFO, "MPJ2: {6}>cell[{0},{1}] {2} in offset={3} rows={4} cols={5}!", new Object[]{ciRow, ciCol, isIt ? "IS" : "IS NOT", getOffset(), getRows(), getCols(), ciName});
+      //logger.log(Level.INFO, "MPJ2: {6}>cell[{0},{1}] {2} in offset={3} rows={4} cols={5}!", new Object[]{ciRow, ciCol, isIt ? "IS" : "IS NOT", getOffset(), getRows(), getCols(), ciName});
 
 
       return isIt;
