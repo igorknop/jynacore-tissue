@@ -98,7 +98,7 @@ public class DefaultMetaModelInstanceEulerMethodThreads2 implements
       _TIME_STEP_.setName("_TIME_STEP_");
       _TIME_STEP_.setExpression(new DefaultNumberConstantExpression(stepSize));
 
-    
+
 
    }
 
@@ -256,36 +256,10 @@ public class DefaultMetaModelInstanceEulerMethodThreads2 implements
       // }
    }
 
-   @SuppressWarnings("unused")
-   private void name2ref(Expression expr) {
-      if (expr == null) {
-         return;
-      } else if (expr.getOperator() instanceof NameOperator) {
-         if (expr.getValue().equals("_TIME_")) {
-            expr.setMiddleOperand(new DefaultReferenceExpression(_TIME_));
-         } else if (expr.getValue().equals("_TIME_STEP_")) {
-            expr.setMiddleOperand(new DefaultReferenceExpression(_TIME_STEP_));
-         } else {
-            expr.setMiddleOperand(new DefaultReferenceExpression(
-                    getReference((String) expr.getValue())));
-         }
-         return;
-      } else {
-         name2ref(expr.getLeftOperand());
-         name2ref(expr.getMiddleOperand());
-         name2ref(expr.getRightOperand());
-      }
-
-   }
-
    private String getKey(String classInstanceName, String ciLevelName) {
       return classInstanceName + "." + ciLevelName;
    }
 
-   private Object getReference(String name) {
-      // FIXME
-      return null;
-   }
 
    /*
     * (non-Javadoc)
@@ -323,43 +297,12 @@ public class DefaultMetaModelInstanceEulerMethodThreads2 implements
       //List<Callable<Object>> listThreads = new ArrayList<Callable<Object>>();
       executor = Executors.newFixedThreadPool(NUM_THREADS);
       for (int tnum = 0; tnum < NUM_THREADS; tnum++) {
-         executor.execute(new RateEffectCalculator());
+         executor.execute(new RateEffectCalculator(tnum, 1));
       }
       executor.shutdown();
-//      executor.awaitTermination(1, TimeUnit.MINUTES);
-      while(!executor.isTerminated()){
+      while (!executor.isTerminated()) {
       };
-      /*
-      // Calculates all rate values
-      for (Entry<String, ClassInstanceRate> entry : rates.entrySet()) {
-      ClassInstanceRate rate = entry.getValue();
-      if (!isInRange(rate)) {
-      continue;
-      }
-      if (rate.getValue() == null) {
-      rate.setValue((Double) rate.getExpression().evaluate());
-      }
-      }
-      
-      // Calculates all rates effects
-      for (Entry<String, ClassInstanceRate> entry : rates.entrySet()) {
-      ClassInstanceRate rate = entry.getValue();
-      if (!isInRange(rate)) {
-      continue;
-      }
-      if (rate.getSource() instanceof ClassInstanceStock) {
-      ClassInstanceStock flevel = rate.getSource();
-      flevel.setValue(flevel.getValue() - rate.getValue()
-       * getStepSize());
-      }
-      if (rate.getTarget() instanceof ClassInstanceStock) {
-      ClassInstanceStock flevel = rate.getTarget();
-      flevel.setValue(flevel.getValue() + rate.getValue()
-       * getStepSize());
-      }
-      
-      }
-       */ currentTime += stepSize;
+      currentTime += stepSize;
       _TIME_.getExpression().setValue(currentTime);
       currentStep++;
    }
@@ -402,10 +345,19 @@ public class DefaultMetaModelInstanceEulerMethodThreads2 implements
    }
 
    public class RateEffectCalculator implements Runnable {
+      private final int cols;
+      private final int offset;
+
+      public RateEffectCalculator(int offset, int cols) {
+         this.offset = offset;
+         this.cols = cols;
+      }
+      
+      
 
       @Override
       public void run() {
-         logger.log(Level.INFO, "Thread {0} starting!", new Object[]{Thread.currentThread().getName()});
+         //logger.log(Level.INFO, "Thread {0} starting!", new Object[]{Thread.currentThread().getName()});
          // Calculates all rate values
          for (Entry<String, ClassInstanceRate> entry : rates.entrySet()) {
             ClassInstanceRate rate = entry.getValue();
@@ -439,7 +391,7 @@ public class DefaultMetaModelInstanceEulerMethodThreads2 implements
                        * getStepSize());
             }
          }
-         logger.log(Level.INFO, "Thread {0} done!", new Object[]{Thread.currentThread().getName()});
+         //logger.log(Level.INFO, "Thread {0} done!", new Object[]{Thread.currentThread().getName()});
 
 
       }
@@ -450,7 +402,7 @@ public class DefaultMetaModelInstanceEulerMethodThreads2 implements
          String[] ciParts = ciName.split(",");
          Integer ciRow = Integer.valueOf(ciParts[0].replace("cell[", ""));
          Integer ciCol = Integer.valueOf(ciParts[1].replace("]", ""));
-         Boolean isIt = ciRow % Thread.currentThread().getId() ==0;
+         Boolean isIt =  offset <= ciCol && ciCol <offset+cols;
          //logger.log(Level.INFO, "Thread {7}: {6}>cell[{0},{1}] {2} in offset={3} rows={4} cols={5}!", new Object[]{ciRow, ciCol, isIt ? "IS" : "IS NOT", getOffset(), getRows(), getCols(), ciName,Thread.currentThread().getName()});
 
 

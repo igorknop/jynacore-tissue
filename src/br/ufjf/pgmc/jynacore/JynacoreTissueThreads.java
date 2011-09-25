@@ -42,9 +42,9 @@ public class JynacoreTissueThreads {
     MetaModel metamodel = storer.loadFromFile(new File("planar.jymm"));
     ((MetaModelInstance) instance).setMetaModel(metamodel);
     profile.setInitialTime(0.0);
-    profile.setFinalTime(0.03);
-    profile.setTimeSteps(2);
-    int skip = 1;
+    profile.setFinalTime(5.0);
+    profile.setTimeSteps(1000);
+    int skip = 10;
 
     simulation.setProfile(profile);
     simulation.setMethod(method);
@@ -52,7 +52,7 @@ public class JynacoreTissueThreads {
     data.clearAll();
 
     int rows = 5;
-    int cols = 5;
+    int cols = 3;
     MetaModelInstance mmi = createCells(instance, rows, cols, data);
     connectCells(rows, cols, mmi);
 
