@@ -27,7 +27,7 @@ import java.io.File;
  *
  * @author igor
  */
-public class JynacoreTissue {
+public class JynacoreTissueThreads {
 
   /**
    * @param args the command line arguments
@@ -35,7 +35,7 @@ public class JynacoreTissue {
   public static void main(String[] args) throws Exception {
     JynaSimulation simulation = new DefaultMetaModelInstanceSimulation();
     JynaSimulationProfile profile = new DefaultSimulationProfile();
-    JynaSimulationMethod method = new DefaultMetaModelInstanceEulerMethod();
+    JynaSimulationMethod method = new DefaultMetaModelInstanceEulerMethodThreads();
     JynaSimulableModel instance = new DefaultMetaModelInstance();
     DefaultSimulationData data = new DefaultSimulationData();
 
