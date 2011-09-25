@@ -36,9 +36,9 @@ import mpi.*;
 public class JynacoreTissueMPJ {
 
 
-   static final int ROWS = 5;                 /* number of rows in tissue */
+   static final int ROWS = 100;                 /* number of rows in tissue */
 
-   static final int COLS = 1;                 /* number of columns tissue */
+   static final int COLS = 100;                 /* number of columns tissue */
 
    static final int MASTER = 0;                /* taskid of first task */
 
@@ -49,7 +49,7 @@ public class JynacoreTissueMPJ {
    private static final double TIME_INITIAL = 0.0;
    private static final double TIME_FINAL = 5.0;
    public static final int TIME_STEPS = 500;
-   private static final int TIME_SKIP = 100;
+   private static final int TIME_SKIP = 10;
    private static final Logger logger = Logger.getLogger("JynacoreTissueMPJ");
 
    /**

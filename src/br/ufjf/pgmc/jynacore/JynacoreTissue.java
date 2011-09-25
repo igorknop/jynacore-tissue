@@ -52,8 +52,8 @@ public class JynacoreTissue {
     //data.removeAll();
     data.clearAll();
 
-    int rows = 32;
-    int cols = 32;
+    int rows = 100;
+    int cols = 100;
     MetaModelInstance mmi = createCells(instance, rows, cols, data);
     connectCells(rows, cols, mmi);
 
@@ -64,15 +64,15 @@ public class JynacoreTissue {
     data.register(0.0);
     runSimulation(simulation, skip);
 
-    System.out.println(data.getWatchedNames());
-    System.out.println(data);
+    //System.out.println(data.getWatchedNames());
+    //System.out.println(data);
   }
 
   private static void runSimulation(JynaSimulation simulation, int skip) throws Exception {
     //simulation.run();
     int steps = simulation.getProfile().getTimeSteps();
 
-    System.out.println("Simulating with "+steps+" iterations.");
+    //System.out.println("Simulating with "+steps+" iterations.");
     for (int i = 0;
             i < steps;
             i++) {
@@ -81,11 +81,11 @@ public class JynacoreTissue {
         simulation.register();
       }
     }
-    System.out.println("Simulating done!");
+    //System.out.println("Simulating done!");
   }
 
   private static void connectCells(int rows, int cols, MetaModelInstance mmi) throws MetaModelInstanceInvalidLinkException {
-    System.out.println("Creating meshes...");
+    //System.out.println("Creating meshes...");
     for (int i = 0; i < rows; i++) {
       for (int j = 0; j < cols; j++) {
         ClassInstance eci = mmi.getClassInstances().get("cell[" + i + "," + j + "]");
@@ -100,7 +100,7 @@ public class JynacoreTissue {
   private static MetaModelInstance createCells(JynaSimulableModel instance, int rows, int cols, DefaultSimulationData data) throws Exception {
     instance.setName("Tissue");
     MetaModelInstance mmi = (MetaModelInstance) instance;
-    System.out.println("Creating "+(rows*cols)+"instances...");
+    //System.out.println("Creating "+(rows*cols)+"instances...");
     for (int i = 0; i < rows; i++) {
       for (int j = 0; j < cols; j++) {
         ClassInstance ci = mmi.addNewClassInstance("cell[" + i + "," + j + "]", "Cell");
