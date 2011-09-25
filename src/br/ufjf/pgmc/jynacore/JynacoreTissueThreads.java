@@ -19,7 +19,6 @@ import br.ufjf.mmc.jynacore.metamodel.impl.JDOMMetaModelStorer;
 import br.ufjf.mmc.jynacore.metamodel.instance.ClassInstance;
 import br.ufjf.mmc.jynacore.metamodel.instance.MetaModelInstance;
 import br.ufjf.mmc.jynacore.metamodel.instance.impl.DefaultMetaModelInstance;
-import br.ufjf.mmc.jynacore.metamodel.simulator.impl.DefaultMetaModelInstanceEulerMethod;
 import br.ufjf.mmc.jynacore.metamodel.simulator.impl.DefaultMetaModelInstanceSimulation;
 import java.io.File;
 
@@ -35,7 +34,7 @@ public class JynacoreTissueThreads {
   public static void main(String[] args) throws Exception {
     JynaSimulation simulation = new DefaultMetaModelInstanceSimulation();
     JynaSimulationProfile profile = new DefaultSimulationProfile();
-    JynaSimulationMethod method = new DefaultMetaModelInstanceEulerMethodThreads();
+    JynaSimulationMethod method = new DefaultMetaModelInstanceEulerMethodThreads2();
     JynaSimulableModel instance = new DefaultMetaModelInstance();
     DefaultSimulationData data = new DefaultSimulationData();
 
@@ -43,17 +42,17 @@ public class JynacoreTissueThreads {
     MetaModel metamodel = storer.loadFromFile(new File("planar.jymm"));
     ((MetaModelInstance) instance).setMetaModel(metamodel);
     profile.setInitialTime(0.0);
-    profile.setFinalTime(5.0);
-    profile.setTimeSteps(500);
-    int skip = 10;
+    profile.setFinalTime(0.03);
+    profile.setTimeSteps(2);
+    int skip = 1;
 
     simulation.setProfile(profile);
     simulation.setMethod(method);
     //data.removeAll();
     data.clearAll();
 
-    int rows = 100;
-    int cols = 100;
+    int rows = 5;
+    int cols = 5;
     MetaModelInstance mmi = createCells(instance, rows, cols, data);
     connectCells(rows, cols, mmi);
 
@@ -65,7 +64,7 @@ public class JynacoreTissueThreads {
     runSimulation(simulation, skip);
 
     //System.out.println(data.getWatchedNames());
-    //System.out.println(data);
+    System.out.println(data);
   }
 
   private static void runSimulation(JynaSimulation simulation, int skip) throws Exception {

@@ -41,8 +41,13 @@ import br.ufjf.mmc.jynacore.metamodel.instance.MetaModelInstance;
 import br.ufjf.mmc.jynacore.metamodel.simulator.MetaModelInstanceSimulationMethod;
 import br.ufjf.mmc.jynacore.systemdynamics.Variable;
 import br.ufjf.mmc.jynacore.systemdynamics.impl.DefaultVariable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -53,6 +58,7 @@ import java.util.logging.Logger;
 public class DefaultMetaModelInstanceEulerMethodThreads2 implements
         MetaModelInstanceSimulationMethod {
 
+   protected static final int NUM_THREADS = 3;
    private Double initialTime;
    private Map<String, ClassInstanceRate> rates;
    private Map<String, ClassInstanceStock> levels;
@@ -91,8 +97,8 @@ public class DefaultMetaModelInstanceEulerMethodThreads2 implements
       _TIME_STEP_ = new DefaultVariable();
       _TIME_STEP_.setName("_TIME_STEP_");
       _TIME_STEP_.setExpression(new DefaultNumberConstantExpression(stepSize));
-      
-      executor = Executors.newFixedThreadPool(2);
+
+    
 
    }
 
@@ -314,7 +320,15 @@ public class DefaultMetaModelInstanceEulerMethodThreads2 implements
          proc.setValue((Double) proc.getExpression().evaluate());
 //			}
       }
-      
+      //List<Callable<Object>> listThreads = new ArrayList<Callable<Object>>();
+      executor = Executors.newFixedThreadPool(NUM_THREADS);
+      for (int tnum = 0; tnum < NUM_THREADS; tnum++) {
+         executor.execute(new RateEffectCalculator());
+      }
+      executor.shutdown();
+//      executor.awaitTermination(1, TimeUnit.MINUTES);
+      while(!executor.isTerminated()){
+      };
       /*
       // Calculates all rate values
       for (Entry<String, ClassInstanceRate> entry : rates.entrySet()) {
@@ -345,8 +359,7 @@ public class DefaultMetaModelInstanceEulerMethodThreads2 implements
       }
       
       }
-       */
-      currentTime += stepSize;
+       */ currentTime += stepSize;
       _TIME_.getExpression().setValue(currentTime);
       currentStep++;
    }
@@ -392,6 +405,7 @@ public class DefaultMetaModelInstanceEulerMethodThreads2 implements
 
       @Override
       public void run() {
+         logger.log(Level.INFO, "Thread {0} starting!", new Object[]{Thread.currentThread().getName()});
          // Calculates all rate values
          for (Entry<String, ClassInstanceRate> entry : rates.entrySet()) {
             ClassInstanceRate rate = entry.getValue();
@@ -402,9 +416,9 @@ public class DefaultMetaModelInstanceEulerMethodThreads2 implements
                try {
                   rate.setValue((Double) rate.getExpression().evaluate());
                } catch (Exception ex) {
-                  //FIXME - Deve interromper as demais threads
                   Logger.getLogger(DefaultMetaModelInstanceEulerMethodThreads2.class.getName()).log(Level.SEVERE, null, ex);
                }
+
             }
          }
 
@@ -425,6 +439,22 @@ public class DefaultMetaModelInstanceEulerMethodThreads2 implements
                        * getStepSize());
             }
          }
+         logger.log(Level.INFO, "Thread {0} done!", new Object[]{Thread.currentThread().getName()});
+
+
+      }
+
+      private boolean isInRange(ClassInstanceItem item) {
+         ClassInstance ci = item.getClassInstance();
+         String ciName = ci.getName();
+         String[] ciParts = ciName.split(",");
+         Integer ciRow = Integer.valueOf(ciParts[0].replace("cell[", ""));
+         Integer ciCol = Integer.valueOf(ciParts[1].replace("]", ""));
+         Boolean isIt = ciRow % Thread.currentThread().getId() ==0;
+         //logger.log(Level.INFO, "Thread {7}: {6}>cell[{0},{1}] {2} in offset={3} rows={4} cols={5}!", new Object[]{ciRow, ciCol, isIt ? "IS" : "IS NOT", getOffset(), getRows(), getCols(), ciName,Thread.currentThread().getName()});
+
+
+         return isIt;
       }
    }
 }
