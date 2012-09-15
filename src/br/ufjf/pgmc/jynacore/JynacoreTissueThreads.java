@@ -43,7 +43,7 @@ public class JynacoreTissueThreads {
     ((MetaModelInstance) instance).setMetaModel(metamodel);
     profile.setInitialTime(0.0);
     profile.setFinalTime(5.0);
-    profile.setTimeSteps(1000);
+    profile.setTimeSteps(500);
     int skip = 10;
 
     simulation.setProfile(profile);
@@ -51,8 +51,8 @@ public class JynacoreTissueThreads {
     //data.removeAll();
     data.clearAll();
 
-    int rows = 5;
-    int cols = 3;
+    int rows = 100;
+    int cols = 100;
     MetaModelInstance mmi = createCells(instance, rows, cols, data);
     connectCells(rows, cols, mmi);
 
@@ -64,7 +64,7 @@ public class JynacoreTissueThreads {
     runSimulation(simulation, skip);
 
     //System.out.println(data.getWatchedNames());
-    System.out.println(data);
+    //System.out.println(data);
   }
 
   private static void runSimulation(JynaSimulation simulation, int skip) throws Exception {
