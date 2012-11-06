@@ -58,7 +58,7 @@ import java.util.logging.Logger;
 public class DefaultMetaModelInstanceEulerMethodThreads2 implements
         MetaModelInstanceSimulationMethod {
 
-   protected static final int NUM_THREADS = 3;
+   protected static final int NUM_THREADS = 4;
    private Double initialTime;
    private Map<String, ClassInstanceRate> rates;
    private Map<String, ClassInstanceStock> levels;
@@ -75,7 +75,7 @@ public class DefaultMetaModelInstanceEulerMethodThreads2 implements
    private Integer rows;
    private Integer offset;
    private static final Logger logger = Logger.getLogger(DefaultMetaModelInstanceEulerMethodThreads2.class.getName());
-   private Integer cols;
+   private Integer cols=100;
    private ExecutorService executor;
 
    /**
@@ -294,10 +294,13 @@ public class DefaultMetaModelInstanceEulerMethodThreads2 implements
          proc.setValue((Double) proc.getExpression().evaluate());
 //			}
       }
-      //List<Callable<Object>> listThreads = new ArrayList<Callable<Object>>();
+      int averow = cols / (NUM_THREADS-1);
+      int extra = cols % (NUM_THREADS-1);
+      offset = 0;
       executor = Executors.newFixedThreadPool(NUM_THREADS);
       for (int tnum = 0; tnum < NUM_THREADS; tnum++) {
-         executor.execute(new RateEffectCalculator(tnum, 1));
+         int colsc = (tnum <= extra) ? averow + 1 : averow;
+         executor.execute(new RateEffectCalculator(tnum, colsc));
       }
       executor.shutdown();
       while (!executor.isTerminated()) {
