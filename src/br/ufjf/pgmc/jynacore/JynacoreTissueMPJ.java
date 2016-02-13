@@ -241,7 +241,7 @@ public class JynacoreTissueMPJ {
 
    private static void printMeshValues(DefaultSimulationData data) {
       System.out.println(data.getWatchedNames());
-      System.out.println(data);
+      System.out.println(data.toString());
       for (int i = 0; i < ROWS; i++) {
          for (int j = 0; j < COLS; j++) {
          }

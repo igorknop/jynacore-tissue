@@ -12,13 +12,10 @@ import br.ufjf.mmc.jynacore.JynaSimulationProfile;
 import br.ufjf.mmc.jynacore.JynaValued;
 import br.ufjf.mmc.jynacore.impl.DefaultSimulationData;
 import br.ufjf.mmc.jynacore.impl.DefaultSimulationProfile;
-import br.ufjf.mmc.jynacore.metamodel.exceptions.instance.MetaModelInstanceInvalidLinkException;
-import br.ufjf.mmc.jynacore.metamodel.instance.ClassInstance;
 import br.ufjf.mmc.jynacore.metamodel.instance.ClassInstanceItem;
-import br.ufjf.mmc.jynacore.metamodel.instance.MetaModelInstance;
 import br.ufjf.mmc.jynacore.metamodel.instance.MetaModelInstanceStorer;
 import br.ufjf.mmc.jynacore.metamodel.instance.impl.DefaultMetaModelInstanceStorerJDOM;
-import br.ufjf.mmc.jynacore.metamodel.simulator.impl.DefaultMetaModelInstanceEulerMethod;
+import br.ufjf.mmc.jynacore.metamodel.simulator.impl.DefaultMetaModelInstanceRK4Method;
 import br.ufjf.mmc.jynacore.metamodel.simulator.impl.DefaultMetaModelInstanceSimulation;
 import java.io.File;
 import java.io.FileWriter;
@@ -35,7 +32,8 @@ public class JynacoreTissueSimulatorToFiles {
    public static void main(String[] args) throws Exception {
       JynaSimulation simulation = new DefaultMetaModelInstanceSimulation();
       JynaSimulationProfile profile = new DefaultSimulationProfile();
-      JynaSimulationMethod method = new DefaultMetaModelInstanceEulerMethod();
+      //JynaSimulationMethod method = new DefaultMetaModelInstanceEulerMethod();
+      JynaSimulationMethod method = new DefaultMetaModelInstanceRK4Method();
       JynaSimulableModel instance;// = new DefaultMetaModelInstance();
       DefaultSimulationData data = new DefaultSimulationData();
 
@@ -54,9 +52,9 @@ public class JynacoreTissueSimulatorToFiles {
       instance = storer.loadFromFile(new File(modelFile));
       //((MetaModelInstance) instance).setMetaModel(metamodel);
       profile.setInitialTime(0.0);
-      profile.setFinalTime(5.0);
-      profile.setTimeLimits(10000, 5.0);
-      int skip = 10;
+      profile.setFinalTime(1.0);
+      profile.setTimeLimits(10000, 1.0);
+      int skip = 5;
 
       simulation.setMethod(method);
       simulation.setProfile(profile);
@@ -93,13 +91,14 @@ public class JynacoreTissueSimulatorToFiles {
       }
       //System.out.println(data.getWatchedNames());
       //System.out.println(data);
-   
-}
-private static void runSimulation(JynaSimulation simulation, int skip) throws Exception {
+
+   }
+
+   private static void runSimulation(JynaSimulation simulation, int skip) throws Exception {
       //simulation.run();
       int steps = simulation.getProfile().getTimeSteps();
 
-      System.out.println("Simulating with "+simulation.getProfile().getTimeSteps()+" iterations. Interval "+simulation.getProfile().getTimeInterval()+" to "+simulation.getProfile().getFinalTime());
+      System.out.println("Simulating with " + simulation.getProfile().getTimeSteps() + " iterations. Interval " + simulation.getProfile().getTimeInterval() + " to " + simulation.getProfile().getFinalTime());
       for (int i = 0;
               i < steps;
               i++) {

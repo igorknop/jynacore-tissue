@@ -61,7 +61,7 @@ public class JynacoreTissueSimulatorToFilesFromProperty {
         data.removeAll();
         data.clearAll();
 
-        matchExps = properties.getProperty("propertyName", "Value");
+        matchExps = properties.getProperty("propertyName", "Value").replace("\"", "");
         String[] exps = matchExps.split(";");
         for (JynaValued jv : instance.getAllJynaValued()) {
             ClassInstanceItem cii = (ClassInstanceItem) jv;
@@ -69,7 +69,6 @@ public class JynacoreTissueSimulatorToFilesFromProperty {
             for (String e : exps) {
                 if (cii.getName().matches(e)) {
                     data.add(cii.getClassInstance().getName() + "." + cii.getName(), jv);
-                    System.out.println(cii.getName());
                 }
             }
         }
